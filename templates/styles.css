@@ -1,0 +1,23 @@
+.message {
+    margin: 5px 0;
+    padding: 8px;
+    border-radius: 5px;
+    background: #f8f9fa;
+}
+
+#chat {
+    height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: white;
+}
+
+.join-request {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+}
