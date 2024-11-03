@@ -9,3 +9,9 @@ services:
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 1
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONWARNINGS
+        value: ignore
+      - key: LOG_LEVEL
+        value: WARNING 

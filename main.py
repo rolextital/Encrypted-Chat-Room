@@ -16,6 +16,7 @@ import base64
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from flask_wtf.csrf import CSRFProtect, generate_csrf
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -51,11 +52,8 @@ def socket_io():
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode='eventlet',
-    ping_timeout=20,
-    ping_interval=25,
-    max_http_buffer_size=10E7,
-    engineio_logger=True
+    logger=False,  # Disable default Socket.IO logging
+    engineio_logger=False  # Disable Engine.IO logging
 )
 
 # Add error handling for socket connections
@@ -225,24 +223,12 @@ def join_room_route():
     input_code = request.form.get("room_code", "")
     display_name = request.form.get("display_name", "")
     
-    # Add debug prints
-    print(f"Attempting to join with code: {input_code}")
-    print(f"Display name: {display_name}")
-    
-    if not display_name or not input_code:
-        return "Missing room code or display name.", 400
-        
-    if not validate_display_name(display_name):
-        return "Invalid display name format.", 400
-    
-    # Print all current room codes for debugging
-    print("Available room codes:")
-    for room_id, room_data in rooms.items():
-        print(f"Room {room_id}: {room_data['current_code']}")
+    if not validate_room_code(input_code) or not validate_display_name(display_name):
+        return "Invalid input.", 400
     
     target_room = None
     for room_id, room_data in rooms.items():
-        if str(room_data["current_code"]) == str(input_code):
+        if room_data['current_code'] == input_code:
             target_room = room_id
             break
     
@@ -281,33 +267,28 @@ def handle_connect():
                 'count': len(rooms[room_code]['participants'])
             }, room=room_code)
     except Exception as e:
-        print(f"Connection error: {str(e)}")
+        logger.error(f"Connection error: {type(e).__name__}")
 
 @socketio.on('message')
 def handle_message(data):
-    room = data.get('room')
-    encrypted_data = data.get('message', '')
-    
-    if not room in rooms or not isinstance(encrypted_data, str):
-        return
-    
     try:
+        room = data.get('room')
+        encrypted_data = data.get('message', '')
+        
+        if not room in rooms or not isinstance(encrypted_data, str):
+            return
+        
         message = {
             'sender': escape(session.get('display_name', 'Anonymous')),
-            'content': encrypted_data,  # Keep the encrypted data as is
+            'content': encrypted_data,
             'timestamp': time.strftime('%H:%M:%S')
         }
         
-        # Check message limit
-        if len(rooms[room]['messages']) >= MAX_MESSAGES_PER_ROOM:
-            rooms[room]['messages'].pop(0)
-            
-        # Store and broadcast the encrypted message
         rooms[room]['messages'].append(message)
         socketio.emit('message', message, room=room)
         
     except Exception as e:
-        print(f"Message handling error: {str(e)}")
+        logger.error(f"Message handling error: {type(e).__name__}")
 
 @socketio.on("request_code_update")
 def handle_code_update(data):
@@ -436,5 +417,41 @@ def room_status(room_code):
         "expires_in": int(ROOM_EXPIRY_TIME - (current_time - room_data["created_at"]))
     }
 
+# Configure logging
+log_level = os.getenv('LOG_LEVEL', 'WARNING')
+logging.basicConfig(level=getattr(logging, log_level))
+logger = logging.getLogger('secure_chat')
+
+# Create custom formatter with timestamp
+class SensitiveFormatter(logging.Formatter):
+    def __init__(self):
+        super().__init__('%(asctime)s - %(levelname)s - %(message)s')
+    
+    def format(self, record):
+        if isinstance(record.msg, str):
+            # Redact sensitive information
+            record.msg = re.sub(r'room":"[a-zA-Z0-9-]+', 'room":"[REDACTED]', record.msg)
+            record.msg = re.sub(r'[a-zA-Z0-9_]{20,}', '[SOCKET_ID]', record.msg)
+            record.msg = re.sub(r'"content":"[^"]+\"', '"content":"[ENCRYPTED]"', record.msg)
+        return super().format(record)
+
+handler = logging.StreamHandler()
+handler.setFormatter(SensitiveFormatter())
+logger.handlers = [handler]
+
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    # Set log level for werkzeug (Flask's default logger)
+    werkzeug_logger = logging.getLogger('werkzeug')
+    werkzeug_logger.setLevel(logging.ERROR)
+    
+    # Set log level for socketio and engineio
+    logging.getLogger('socketio').setLevel(logging.ERROR)
+    logging.getLogger('engineio').setLevel(logging.ERROR)
+    
+    socketio.run(
+        app,
+        debug=False,  # Set to False to reduce logs
+        log_output=False,  # Disable Socket.IO logs
+        host='127.0.0.1',  # Only allow local connections
+        port=5000
+    )
