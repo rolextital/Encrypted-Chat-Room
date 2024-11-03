@@ -10,6 +10,7 @@ import re
 import hashlib
 from dotenv import load_dotenv
 import os
+from engineio.async_drivers import eventlet
 
 # Load environment variables
 load_dotenv()
@@ -30,7 +31,26 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Get secret key from .env
 if not app.secret_key:
     raise ValueError("No FLASK_SECRET_KEY set in .env file")
-socketio = SocketIO(app)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode='eventlet',
+    ping_timeout=20,
+    ping_interval=25,
+    max_http_buffer_size=10E7,
+    engineio_logger=True
+)
+
+# Add error handling for socket connections
+@socketio.on_error_default
+def default_error_handler(e):
+    print(f'Socket.IO error: {str(e)}')
+    return False
+
+# Add ping/pong handlers
+@socketio.on('ping')
+def handle_ping():
+    emit('pong')
 
 rooms = {}
 
@@ -217,15 +237,18 @@ def join_room_route():
 
 @socketio.on("connect")
 def handle_connect():
-    room_code = request.args.get("room")
-    if room_code and room_code in rooms:
-        join_room(room_code)
-        if session.get('display_name') and session['display_name'] not in rooms[room_code]['participants']:
-            rooms[room_code]['participants'].append(session['display_name'])
-        
-        socketio.emit('update_participants', {
-            'count': len(rooms[room_code]['participants'])
-        }, room=room_code)
+    try:
+        room_code = request.args.get("room")
+        if room_code and room_code in rooms:
+            join_room(room_code)
+            if session.get('display_name') and session['display_name'] not in rooms[room_code]['participants']:
+                rooms[room_code]['participants'].append(session['display_name'])
+            
+            socketio.emit('update_participants', {
+                'count': len(rooms[room_code]['participants'])
+            }, room=room_code)
+    except Exception as e:
+        print(f"Connection error: {str(e)}")
 
 @socketio.on('message')
 def handle_message(data):

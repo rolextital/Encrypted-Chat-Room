@@ -91,9 +91,36 @@
         const socket = io({
             query: {
                 room: "{{ room_code }}"
+            },
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 20000
+        });
+
+        // Add connection error handling
+        socket.on('connect_error', (error) => {
+            console.log('Connection Error:', error);
+            // Attempt to reconnect after 5 seconds
+            setTimeout(() => {
+                socket.connect();
+            }, 5000);
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Disconnected:', reason);
+            if (reason === 'io server disconnect') {
+                // Reconnect if server disconnected
+                socket.connect();
             }
         });
-        
+
+        // Add ping/pong to keep connection alive
+        setInterval(() => {
+            socket.emit('ping');
+        }, 25000);
+
         socket.on('connect', function() {
             socket.emit('join', {
                 room: "{{ room_code }}"
