@@ -185,15 +185,18 @@ def index():
         room_id = str(uuid.uuid4())
         current_code = generate_temp_room_code()
         
+        # Generate encryption key once for the room
+        room_encryption_key = generate_csrf()
+        
         rooms[room_id] = {
-            "creator_hash": hashed_ip,  # Store hashed IP instead of raw IP
+            "creator_hash": hashed_ip,
             "messages": [],
             "participants": [escape(display_name)],
             "pending_requests": {},
             "created_at": time.time(),
             "current_code": current_code,
             "last_code_update": int(time.time()),
-            "cipher": generate_key(room_id)  # Add encryption key
+            "encryption_key": room_encryption_key  # Store the encryption key
         }
         return redirect(url_for("chatroom", room_code=room_id))
     return render_template("index.html")
@@ -208,14 +211,11 @@ def chatroom(room_code):
     last_update = rooms[room_code].get('last_code_update', current_time)
     time_remaining = 300 - ((current_time - last_update) % 300)
     
-    # Generate encryption key for client
-    encryption_key = generate_csrf()
-    
     return render_template(
         "chatroom.html", 
         room_code=room_code,
         initial_time=time_remaining,
-        encryption_key=encryption_key,
+        encryption_key=rooms[room_code]['encryption_key'],  # Use room's encryption key
         participant_count=len(rooms[room_code]['participants']),
         display_code=rooms[room_code]['current_code']
     )
@@ -286,19 +286,15 @@ def handle_connect():
 @socketio.on('message')
 def handle_message(data):
     room = data.get('room')
-    encrypted_message = data.get('message', '')
+    encrypted_data = data.get('message', '')
     
-    if not room in rooms or not isinstance(encrypted_message, str):
+    if not room in rooms or not isinstance(encrypted_data, str):
         return
     
     try:
-        # Get the room's cipher
-        cipher = rooms[room]['cipher']
-        
-        # Create message object
         message = {
             'sender': escape(session.get('display_name', 'Anonymous')),
-            'content': encrypted_message,  # Keep the client-side encrypted message
+            'content': encrypted_data,  # Keep the encrypted data as is
             'timestamp': time.strftime('%H:%M:%S')
         }
         
@@ -306,15 +302,9 @@ def handle_message(data):
         if len(rooms[room]['messages']) >= MAX_MESSAGES_PER_ROOM:
             rooms[room]['messages'].pop(0)
             
-        # Store the message
+        # Store and broadcast the encrypted message
         rooms[room]['messages'].append(message)
-        
-        # Broadcast to room
-        socketio.emit('message', {
-            'sender': message['sender'],
-            'content': message['content'],
-            'timestamp': message['timestamp']
-        }, room=room)
+        socketio.emit('message', message, room=room)
         
     except Exception as e:
         print(f"Message handling error: {str(e)}")

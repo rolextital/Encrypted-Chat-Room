@@ -127,6 +127,7 @@
         }, 25000);
 
         socket.on('connect', function() {
+            console.log('Connected with encryption key:', encryptionKey);
             socket.emit('join', {
                 room: "{{ room_code }}"
             });
@@ -146,11 +147,13 @@
                 });
                 const encrypted = CryptoJS.AES.encrypt(message, key.toString());
                 return JSON.stringify({
-                    salt: salt.toString(),
+                    salt: salt.toString(CryptoJS.enc.Hex),
                     content: encrypted.toString()
                 });
             } catch (e) {
                 console.error('Encryption error:', e);
+                console.log('roomKey:', roomKey);
+                console.log('encryptionKey:', encryptionKey);
                 return null;
             }
         }
@@ -165,9 +168,18 @@
                     iterations: 1000
                 });
                 const decrypted = CryptoJS.AES.decrypt(parsedData.content, key.toString());
-                return decrypted.toString(CryptoJS.enc.Utf8);
+                const result = decrypted.toString(CryptoJS.enc.Utf8);
+                
+                if (!result) {
+                    throw new Error('Decryption resulted in empty string');
+                }
+                
+                return result;
             } catch (e) {
                 console.error('Decryption error:', e);
+                console.log('Encrypted data:', encryptedData);
+                console.log('roomKey:', roomKey);
+                console.log('encryptionKey:', encryptionKey);
                 return 'Message cannot be decrypted';
             }
         }
@@ -204,10 +216,14 @@
             try {
                 const decryptedContent = decryptMessage(data.content);
                 console.log('Decrypted content:', decryptedContent); // Debug log
-                messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): ${decryptedContent}`;
+                if (decryptedContent && decryptedContent !== 'Message cannot be decrypted') {
+                    messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): ${decryptedContent}`;
+                } else {
+                    messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): [Message cannot be decrypted]`;
+                }
             } catch (e) {
                 console.error('Decryption failed:', e);
-                messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): [Encrypted Message]`;
+                messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): [Encryption Error]`;
             }
             
             chat.appendChild(messageDiv);
