@@ -11,6 +11,11 @@ import hashlib
 from dotenv import load_dotenv
 import os
 from engineio.async_drivers import eventlet
+from cryptography.fernet import Fernet
+import base64
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 
 # Load environment variables
 load_dotenv()
@@ -31,6 +36,18 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Get secret key from .env
 if not app.secret_key:
     raise ValueError("No FLASK_SECRET_KEY set in .env file")
+
+# Initialize CSRF with exempt
+csrf = CSRFProtect()
+csrf.init_app(app)
+
+# Exempt the Socket.IO endpoint
+@csrf.exempt
+@app.route('/socket.io/')
+def socket_io():
+    return 'Socket.IO endpoint'
+
+# Initialize Socket.IO after CSRF setup
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
@@ -136,12 +153,23 @@ def hash_ip(ip):
     """Hash IP address with SHA-256"""
     return hashlib.sha256(ip.encode()).hexdigest()
 
+def generate_key(room_id):
+    """Generate a unique encryption key for each room"""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=room_id.encode(),
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(app.secret_key.encode()))
+    return Fernet(key)
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        display_name = request.form.get("display_name", "")
-        if not display_name or not validate_display_name(display_name):
-            return "Invalid display name", 400
+        display_name = request.form.get("display_name", "").strip()
+        if not display_name:
+            return redirect(url_for("index"))
             
         # Check total room limit
         if len(rooms) >= MAX_ROOMS:
@@ -164,7 +192,8 @@ def index():
             "pending_requests": {},
             "created_at": time.time(),
             "current_code": current_code,
-            "last_code_update": int(time.time())
+            "last_code_update": int(time.time()),
+            "cipher": generate_key(room_id)  # Add encryption key
         }
         return redirect(url_for("chatroom", room_code=room_id))
     return render_template("index.html")
@@ -179,12 +208,16 @@ def chatroom(room_code):
     last_update = rooms[room_code].get('last_code_update', current_time)
     time_remaining = 300 - ((current_time - last_update) % 300)
     
+    # Generate encryption key for client
+    encryption_key = generate_csrf()
+    
     return render_template(
         "chatroom.html", 
-        room_code=room_code, 
-        display_code=rooms[room_code]["current_code"],
-        participant_count=len(rooms[room_code]["participants"]),
-        initial_time=time_remaining
+        room_code=room_code,
+        initial_time=time_remaining,
+        encryption_key=encryption_key,
+        participant_count=len(rooms[room_code]['participants']),
+        display_code=rooms[room_code]['current_code']
     )
 
 @app.route("/join", methods=["POST"])
@@ -253,31 +286,38 @@ def handle_connect():
 @socketio.on('message')
 def handle_message(data):
     room = data.get('room')
-    message_content = data.get('message', '')
+    encrypted_message = data.get('message', '')
     
-    # Basic validation
-    if not room in rooms or not isinstance(message_content, str):
+    if not room in rooms or not isinstance(encrypted_message, str):
         return
     
-    # Check for empty messages after trimming
-    if not message_content.strip():
-        return
-    
-    # Check message limit
-    if len(rooms[room]['messages']) >= MAX_MESSAGES_PER_ROOM:
-        # Remove oldest message if at limit
-        rooms[room]['messages'].pop(0)
-    
-    message = {
-        'sender': escape(session.get('display_name', 'Anonymous')),
-        'content': sanitize_message(message_content),
-        'timestamp': time.strftime('%H:%M:%S')
-    }
-    
-    # Only store and emit if message isn't empty after sanitization
-    if message['content']:
+    try:
+        # Get the room's cipher
+        cipher = rooms[room]['cipher']
+        
+        # Create message object
+        message = {
+            'sender': escape(session.get('display_name', 'Anonymous')),
+            'content': encrypted_message,  # Keep the client-side encrypted message
+            'timestamp': time.strftime('%H:%M:%S')
+        }
+        
+        # Check message limit
+        if len(rooms[room]['messages']) >= MAX_MESSAGES_PER_ROOM:
+            rooms[room]['messages'].pop(0)
+            
+        # Store the message
         rooms[room]['messages'].append(message)
-        socketio.emit('message', message, room=room)
+        
+        # Broadcast to room
+        socketio.emit('message', {
+            'sender': message['sender'],
+            'content': message['content'],
+            'timestamp': message['timestamp']
+        }, room=room)
+        
+    except Exception as e:
+        print(f"Message handling error: {str(e)}")
 
 @socketio.on("request_code_update")
 def handle_code_update(data):

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Chat Room</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -80,8 +81,11 @@
         <div id="chat"></div>
         
         <div class="input-area">
-            <input id="message" type="text" placeholder="Type your message..." 
-                   onkeypress="if(event.key === 'Enter') sendMessage()">
+            <input id="message" 
+                   type="text" 
+                   placeholder="Type your message..." 
+                   maxlength="{{ MAX_MESSAGE_LENGTH }}"
+                   onkeypress="if(event.key === 'Enter') { event.preventDefault(); sendMessage(); }">
             <button onclick="sendMessage()">Send</button>
             <button onclick="leaveChat()">Leave</button>
         </div>
@@ -90,7 +94,8 @@
     <script>
         const socket = io({
             query: {
-                room: "{{ room_code }}"
+                room: "{{ room_code }}",
+                csrf_token: "{{ csrf_token() }}"
             },
             transports: ['websocket', 'polling'],
             reconnection: true,
@@ -128,24 +133,77 @@
             socket.emit('request_timer_sync', { room: "{{ room_code }}" });
         });
 
-        // Message handling
-        function sendMessage() {
-            const messageInput = document.getElementById('message');
-            const message = messageInput.value.trim();
-            if (message) {
-                socket.emit('message', {
-                    message: message,
-                    room: "{{ room_code }}"
+        // Encryption setup
+        const roomKey = "{{ room_code }}";
+        const encryptionKey = "{{ encryption_key }}";
+        
+        function encryptMessage(message) {
+            try {
+                const salt = CryptoJS.lib.WordArray.random(128/8);
+                const key = CryptoJS.PBKDF2(roomKey + encryptionKey, salt, {
+                    keySize: 256/32,
+                    iterations: 1000
                 });
-                messageInput.value = '';
+                const encrypted = CryptoJS.AES.encrypt(message, key.toString());
+                return encrypted.toString();
+            } catch (e) {
+                console.error('Encryption error:', e);
+                return null;
             }
         }
 
+        function decryptMessage(encryptedMessage) {
+            try {
+                const key = CryptoJS.PBKDF2(roomKey + encryptionKey, salt, {
+                    keySize: 256/32,
+                    iterations: 1000
+                });
+                const decrypted = CryptoJS.AES.decrypt(encryptedMessage, key.toString());
+                return decrypted.toString(CryptoJS.enc.Utf8);
+            } catch (e) {
+                console.error('Decryption error:', e);
+                return 'Message cannot be decrypted';
+            }
+        }
+
+        // Message sending function
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value.trim();
+            
+            if (message) {
+                console.log('Sending message:', message); // Debug log
+                const encryptedMessage = encryptMessage(message);
+                
+                if (encryptedMessage) {
+                    console.log('Encrypted message:', encryptedMessage); // Debug log
+                    socket.emit('message', {
+                        message: encryptedMessage,
+                        room: "{{ room_code }}"
+                    });
+                    messageInput.value = '';
+                } else {
+                    console.error('Failed to encrypt message');
+                }
+            }
+        }
+
+        // Message receiving
         socket.on('message', function(data) {
+            console.log('Received message:', data); // Debug log
             const chat = document.getElementById('chat');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
-            messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): ${data.content}`;
+            
+            try {
+                const decryptedContent = decryptMessage(data.content);
+                console.log('Decrypted content:', decryptedContent); // Debug log
+                messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): ${decryptedContent}`;
+            } catch (e) {
+                console.error('Decryption failed:', e);
+                messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): [Encrypted Message]`;
+            }
+            
             chat.appendChild(messageDiv);
             chat.scrollTop = chat.scrollHeight;
         });
