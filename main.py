@@ -8,8 +8,8 @@ from threading import Thread
 from bleach import clean
 import re
 import hashlib
-import os
 from dotenv import load_dotenv
+import os
 
 # Load environment variables
 load_dotenv()
@@ -27,7 +27,9 @@ MAX_ROOMS_PER_IP = 3  # Maximum rooms an IP can create
 CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Get secret key from environment variable
+app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Get secret key from .env
+if not app.secret_key:
+    raise ValueError("No FLASK_SECRET_KEY set in .env file")
 socketio = SocketIO(app)
 
 rooms = {}
@@ -382,5 +384,4 @@ def room_status(room_code):
     }
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, debug=True)
