@@ -9,6 +9,10 @@ from bleach import clean
 import re
 import hashlib
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Security Constants
 MAX_MESSAGE_LENGTH = 1000  # Maximum characters per message
@@ -23,7 +27,7 @@ MAX_ROOMS_PER_IP = 3  # Maximum rooms an IP can create
 CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key'  # Change this to a secure secret key
+app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Get secret key from environment variable
 socketio = SocketIO(app)
 
 rooms = {}
