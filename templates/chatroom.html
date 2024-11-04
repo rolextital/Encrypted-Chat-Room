@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -192,11 +192,9 @@
             display: flex;
             gap: 10px;
             align-items: flex-end;
-            z-index: 10;
-            margin-top: 0;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            z-index: 1000;
             border-top: 0.5px solid var(--border-color);
+            transition: transform 0.3s ease;
         }
 
         textarea {
@@ -1257,6 +1255,50 @@
                     icon.classList.add('fa-sun');
                     themeSwitch.classList.remove('dark');
                 }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageInput = document.getElementById('message-input');
+            const inputArea = document.querySelector('.input-area');
+            
+            // Function to detect mobile device
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Handle input focus (keyboard appears)
+                messageInput.addEventListener('focus', function() {
+                    // Small delay to ensure keyboard is fully shown
+                    setTimeout(() => {
+                        // Get the visual viewport height
+                        const viewportHeight = window.visualViewport.height;
+                        // Get the distance from the bottom of the viewport
+                        const bottomOffset = window.innerHeight - viewportHeight;
+                        
+                        // Adjust the input area position
+                        inputArea.style.position = 'fixed';
+                        inputArea.style.bottom = `${bottomOffset}px`;
+                        
+                        // Scroll chat to bottom
+                        const chat = document.getElementById('chat');
+                        chat.scrollTop = chat.scrollHeight;
+                    }, 100);
+                });
+
+                // Handle input blur (keyboard disappears)
+                messageInput.addEventListener('blur', function() {
+                    // Reset the input area position
+                    inputArea.style.position = 'fixed';
+                    inputArea.style.bottom = '0';
+                });
+
+                // Handle viewport changes (like keyboard appearing/disappearing)
+                window.visualViewport.addEventListener('resize', function() {
+                    if (document.activeElement === messageInput) {
+                        const bottomOffset = window.innerHeight - window.visualViewport.height;
+                        inputArea.style.bottom = `${bottomOffset}px`;
+                    }
+                });
             }
         });
     </script>
