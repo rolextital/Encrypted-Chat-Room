@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Chat - Access Terminal</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="light dark">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         :root {
             --imessage-blue: #0B93F6;
@@ -13,6 +16,22 @@
             --system-gray: #8E8E93;
             --background: #ffffff;
             --border-color: #E5E5E5;
+            --text-primary: #000000;
+            --text-secondary: #8E8E93;
+            --card-bg: #FFFFFF;
+            --input-bg: #FFFFFF;
+            --input-border: #E5E5E5;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --background: #000000;
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989F;
+            --card-bg: #1C1C1E;
+            --input-bg: #1C1C1E;
+            --input-border: #3A3A3C;
+            --shadow-color: rgba(255, 255, 255, 0.05);
         }
 
         * {
@@ -20,6 +39,7 @@
             padding: 0;
             box-sizing: border-box;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         body {
@@ -34,14 +54,14 @@
         .container {
             width: 100%;
             max-width: 400px;
-            background: white;
+            background: var(--card-bg);
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px var(--shadow-color);
         }
 
         h2 {
-            color: #000;
+            color: var(--text-primary);
             font-size: 24px;
             margin-bottom: 20px;
             text-align: center;
@@ -55,16 +75,22 @@
             width: 100%;
             padding: 12px 20px;
             margin: 8px 0;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--input-border);
             border-radius: 10px;
             font-size: 16px;
             transition: all 0.3s ease;
+            background: var(--input-bg);
+            color: var(--text-primary);
         }
 
         input:focus {
             outline: none;
             border-color: var(--imessage-blue);
             box-shadow: 0 0 0 2px rgba(11, 147, 246, 0.2);
+        }
+
+        input::placeholder {
+            color: var(--text-secondary);
         }
 
         button {
@@ -85,7 +111,7 @@
         }
 
         .help-text {
-            color: var(--system-gray);
+            color: var(--text-secondary);
             font-size: 14px;
             text-align: center;
             margin-top: 10px;
@@ -112,6 +138,50 @@
         @supports (-webkit-touch-callout: none) {
             input {
                 font-size: 16px;
+            }
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        #theme-switch {
+            background: var(--card-bg);
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+
+        #theme-switch i {
+            color: var(--text-primary);
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        #theme-switch:hover {
+            transform: scale(1.05);
+        }
+
+        #theme-switch.dark i {
+            transform: rotate(360deg);
+        }
+
+        @supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+            #theme-switch {
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                background: var(--card-bg);
             }
         }
     </style>
@@ -143,5 +213,45 @@
             <p class="help-text">Enter the 6-digit code to join an existing chat</p>
         </div>
     </div>
+    <div class="theme-toggle">
+        <button id="theme-switch" aria-label="Toggle dark mode">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const themeSwitch = document.getElementById('theme-switch');
+        const icon = themeSwitch.querySelector('i');
+        
+        // Check for saved theme preference or default to system preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateIcon(savedTheme);
+        }
+
+        themeSwitch.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            localStorage.setItem('theme', newTheme);
+            document.documentElement.setAttribute('data-theme', newTheme);
+            
+            updateIcon(newTheme);
+        });
+
+        function updateIcon(theme) {
+            if (theme === 'dark') {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                themeSwitch.classList.add('dark');
+            } else {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                themeSwitch.classList.remove('dark');
+            }
+        }
+    });
+    </script>
 </body>
 </html>

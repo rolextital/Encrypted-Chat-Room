@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting for Approval</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <meta name="color-scheme" content="light dark">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         :root {
             --imessage-blue: #0B93F6;
@@ -12,6 +15,18 @@
             --system-gray: #8E8E93;
             --background: #ffffff;
             --border-color: #E5E5E5;
+            --text-primary: #000000;
+            --text-secondary: #8E8E93;
+            --card-bg: #FFFFFF;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --background: #000000;
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989F;
+            --card-bg: #1C1C1E;
+            --shadow-color: rgba(255, 255, 255, 0.05);
         }
 
         * {
@@ -34,22 +49,22 @@
         .waiting-container {
             width: 100%;
             max-width: 400px;
-            background: white;
+            background: var(--card-bg);
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px var(--shadow-color);
             text-align: center;
         }
 
         h2 {
-            color: #000;
+            color: var(--text-primary);
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 15px;
         }
 
         .status-text {
-            color: var(--system-gray);
+            color: var(--text-secondary);
             font-size: 15px;
             margin: 20px 0;
             font-weight: 400;
@@ -124,6 +139,50 @@
                 font-size: 24px; /* Larger timer for mobile */
             }
         }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        #theme-switch {
+            background: var(--card-bg);
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+
+        #theme-switch i {
+            color: var(--text-primary);
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        #theme-switch:hover {
+            transform: scale(1.05);
+        }
+
+        #theme-switch.dark i {
+            transform: rotate(360deg);
+        }
+
+        @supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+            #theme-switch {
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                background: var(--card-bg);
+            }
+        }
     </style>
 </head>
 <body>
@@ -142,6 +201,12 @@
         </div>
         
         <div id="timer">60</div>
+    </div>
+
+    <div class="theme-toggle">
+        <button id="theme-switch" aria-label="Toggle dark mode">
+            <i class="fas fa-moon"></i>
+        </button>
     </div>
 
     <script>
@@ -179,6 +244,42 @@
                 window.location.href = '/';
             }
         });
+    </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const themeSwitch = document.getElementById('theme-switch');
+        const icon = themeSwitch.querySelector('i');
+        
+        // Check for saved theme preference or default to system preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateIcon(savedTheme);
+        }
+
+        themeSwitch.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            localStorage.setItem('theme', newTheme);
+            document.documentElement.setAttribute('data-theme', newTheme);
+            
+            updateIcon(newTheme);
+        });
+
+        function updateIcon(theme) {
+            if (theme === 'dark') {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                themeSwitch.classList.add('dark');
+            } else {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                themeSwitch.classList.remove('dark');
+            }
+        }
+    });
     </script>
 </body>
 </html>

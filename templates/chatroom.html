@@ -7,17 +7,42 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="color-scheme" content="light dark">
     <title>Secure Chat Room</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         :root {
-            --imessage-blue: #0B93F6;
+            --imessage-blue: #007AFF;
             --imessage-gray: #E9E9EB;
             --system-gray: #8E8E93;
-            --background: #ffffff;
+            --background: #FFFFFF;
             --border-color: #E5E5E5;
+            --text-primary: #000000;
+            --text-secondary: #8E8E93;
+            --message-received-bg: #E9E9EB;
+            --message-received-text: #000000;
+            --message-sent-bg: #007AFF;
+            --message-sent-text: #FFFFFF;
+            --input-bg: #FFFFFF;
+            --chat-bg: #FFFFFF;
+        }
+
+        /* Dark theme variables */
+        [data-theme="dark"] {
+            --background: #000000;
+            --border-color: #1C1C1E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #98989F;
+            --message-received-bg: #1C1C1E;
+            --message-received-text: #FFFFFF;
+            --message-sent-bg: #0A84FF;
+            --message-sent-text: #FFFFFF;
+            --input-bg: #1C1C1E;
+            --system-gray: #98989F;
+            --chat-bg: #000000;
         }
 
         * {
@@ -30,7 +55,7 @@
 
         body {
             background: var(--background);
-            color: #000;
+            color: var(--text-primary);
             line-height: 1.6;
             overscroll-behavior-y: contain;
             position: fixed;
@@ -45,41 +70,91 @@
         }
 
         .room-info {
-            padding: 15px 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 20px;
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--border-color);
+            margin-bottom: 16px;
             text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background: var(--background);
         }
 
         .room-info h2 {
-            font-size: 24px;
-            margin-bottom: 8px;
-            color: var(--imessage-blue);
-        }
-
-        #timer {
+            font-size: 20px;
             font-weight: 600;
-            color: var(--system-gray);
+            margin-bottom: 8px;
+            color: var(--text-primary);
         }
 
-        #count {
+        .room-stats {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .room-stats p {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--system-gray);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .room-stats i {
+            font-size: 15px;
+            color: var(--system-gray);
+            opacity: 0.9;
+        }
+
+        #timer, #count {
             font-weight: 600;
             color: var(--imessage-blue);
         }
 
         #chat {
-            height: calc(100vh - 180px);
+            max-height: 620px;
             overflow-y: auto;
             padding: 20px;
-            background: white;
-            margin-bottom: 70px;
+            background: var(--chat-bg);
+            margin-bottom: 0;
+            transition: margin-bottom 0.3s ease;
+            -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
+            scrollbar-width: none;     /* Hide scrollbar for Firefox */
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        #chat::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Show scrollbar only when hovering/scrolling */
+        #chat:hover {
+            -ms-overflow-style: auto;  /* Show scrollbar for IE and Edge */
+            scrollbar-width: auto;     /* Show scrollbar for Firefox */
+        }
+
+        #chat:hover::-webkit-scrollbar {
+            display: block;
+            width: 8px;
+        }
+
+        #chat:hover::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #chat:hover::-webkit-scrollbar-thumb {
+            background: var(--system-gray);
+            border-radius: 4px;
         }
 
         .message {
-            margin: 8px 0;
+            margin: 6px 0;
             display: flex;
             flex-direction: column;
-            max-width: 70%;
+            max-width: 75%;
         }
 
         .message.sent {
@@ -94,22 +169,22 @@
 
         .message-content {
             padding: 8px 12px;
-            border-radius: 18px;
+            border-radius: 16px;
             margin: 2px 0;
             word-wrap: break-word;
             max-width: 100%;
+            font-size: 15px;
+            line-height: 1.3;
         }
 
         .message.sent .message-content {
-            background: var(--imessage-blue);
-            color: white;
-            border-bottom-right-radius: 5px;
+            background: var(--message-sent-bg);
+            color: var(--message-sent-text);
         }
 
         .message.received .message-content {
-            background: var(--imessage-gray);
-            color: black;
-            border-bottom-left-radius: 5px;
+            background: var(--message-received-bg);
+            color: var(--message-received-text);
         }
 
         .message-time {
@@ -136,29 +211,56 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 15px;
+            padding: 12px 16px;
             background: var(--background);
-            border-top: 1px solid var(--border-color);
             display: flex;
             gap: 10px;
             align-items: flex-end;
+            z-index: 10;
+            margin-top: 0;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 0.5px solid var(--border-color);
         }
 
         textarea {
             flex-grow: 1;
-            padding: 12px 20px;
+            padding: 8px 14px;
             border: none;
-            border-radius: 20px;
-            background: white;
-            font-size: 16px;
+            border-radius: 18px;
+            background: var(--input-bg);
+            font-size: 15px;
             transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             resize: none;
             min-height: 45px;
             max-height: 160px;
             line-height: 1.4;
             font-family: inherit;
-            overflow-y: auto;
+            overflow-y: scroll;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            color: var(--text-primary);
+        }
+
+        /* Hide scrollbar by default */
+        textarea::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Only show scrollbar when user is actively scrolling */
+        textarea.scrolling::-webkit-scrollbar {
+            display: block;
+            width: 6px;
+        }
+
+        textarea.scrolling::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        textarea.scrolling::-webkit-scrollbar-thumb {
+            background: var(--system-gray);
+            border-radius: 3px;
         }
 
         textarea:focus {
@@ -223,75 +325,45 @@
         .join-request-notification {
             position: fixed;
             width: 300px;
-            background: rgba(255, 255, 255, 0.95);
+            top: 20px;          /* Position from top */
+            right: 20px;        /* Position from right */
+            background: var(--card-bg);
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px var(--shadow-color);
             z-index: 1000;
+            border: 1px solid var(--border-color);
+            animation: slideIn 0.3s ease;  /* Smooth entry animation */
         }
 
-        /* Desktop styles */
-        @media (min-width: 769px) {
-            .join-request-notification {
-                top: 20px;
-                right: 20px;
-                transform: translateX(120%);
+        /* Add animation for smooth entry */
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
             }
-
-            .join-request-notification.slide-in {
-                transform: translateX(0);
-            }
-
-            .join-request-notification.slide-out {
-                transform: translateX(120%);
+            to {
+                transform: translateY(0);
+                opacity: 1;
             }
         }
 
-        /* Mobile styles */
+        /* Mobile responsive positioning */
         @media (max-width: 768px) {
             .join-request-notification {
-                top: 80px; /* Increased to avoid room info overlap */
-                left: 50%;
                 width: 90%;
                 max-width: 350px;
-                transform: translate(-50%, -150%);
-            }
-
-            .join-request-notification.slide-in {
-                transform: translate(-50%, 0);
-                animation: mobile-slide-in 0.3s ease forwards;
-            }
-
-            .join-request-notification.slide-out {
-                animation: mobile-slide-out 0.3s ease forwards;
-            }
-
-            @keyframes mobile-slide-in {
-                from { 
-                    transform: translate(-50%, -150%);
-                    opacity: 0;
-                }
-                to { 
-                    transform: translate(-50%, 0);
-                    opacity: 1;
-                }
-            }
-
-            @keyframes mobile-slide-out {
-                from { 
-                    transform: translate(-50%, 0);
-                    opacity: 1;
-                }
-                to { 
-                    transform: translate(-50%, -150%);
-                    opacity: 0;
-                }
+                right: 50%;          /* Center horizontally */
+                transform: translateX(50%);  /* Center horizontally */
             }
         }
 
         .notification-content {
             margin-bottom: 12px;
+            color: var(--text-primary);
+            font-size: 15px;
         }
 
         .notification-buttons {
@@ -314,8 +386,12 @@
         }
 
         .notification-button.deny {
-            background: var(--imessage-gray);
-            color: black;
+            background: var(--message-received-bg);
+            color: var(--text-primary);
+        }
+
+        .notification-button:hover {
+            opacity: 0.9;
         }
 
         /* Add styles for approval status */
@@ -329,15 +405,16 @@
         .system-message {
             text-align: center;
             margin: 10px 0;
-            padding: 5px;
+            padding: 8px 0;
         }
 
         .system-message span {
-            background: rgba(0, 0, 0, 0.05);
-            color: var(--system-gray);
-            padding: 5px 10px;
+            display: inline-block;
+            padding: 6px 12px;
             border-radius: 10px;
             font-size: 13px;
+            background: var(--message-received-bg);
+            color: var(--text-primary);
         }
 
         @media (max-width: 768px) {
@@ -347,8 +424,10 @@
             }
 
             #chat {
-                height: calc(100vh - 160px);
+                height: calc(100vh - 180px);
                 padding: 10px;
+                padding-bottom: 60px;
+                margin-bottom: 0;
             }
 
             .message-content {
@@ -418,11 +497,17 @@
         /* Update chat container margin for expanded textarea */
         #chat {
             height: calc(100vh - 180px);
-            margin-bottom: 70px;
-            overflow-y: auto;
+            margin-bottom: 0;
+            overflow-y: scroll;
             padding: 20px;
-            background: white;
-            transition: margin-bottom 0.3s ease;
+            background: var(--chat-bg);
+            transition: background-color 0.3s ease;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        #chat::-webkit-scrollbar {
+            display: none;
         }
 
         @media (max-width: 768px) {
@@ -433,25 +518,286 @@
                 max-height: 160px; /* Keep same height for mobile */
             }
         }
+
+        /* Chat scrollbar styling */
+        #chat::-webkit-scrollbar {
+            width: 6px; /* Thinner width */
+        }
+
+        #chat:hover::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #chat:hover::-webkit-scrollbar-thumb {
+            background: var(--system-gray);  /* Use system gray instead of rgba black */
+            border-radius: 3px;
+            transition: background 0.2s ease;
+        }
+
+        #chat:hover::-webkit-scrollbar-thumb:hover {
+            background: var(--system-gray);  /* Use system gray instead of rgba black */
+            opacity: 0.8;  /* Just change opacity for hover effect */
+        }
+
+        /* Textarea scrollbar styling */
+        textarea.scrolling::-webkit-scrollbar {
+            width: 6px; /* Match chat scrollbar width */
+        }
+
+        textarea.scrolling::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        textarea.scrolling::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            transition: background 0.2s ease;
+        }
+
+        textarea.scrolling::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .room-info p {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--system-gray);
+            font-size: 15px;
+        }
+
+        /* Style for the icons */
+        .room-info p::first-letter {
+            font-size: 16px;
+            color: var(--system-gray);
+            opacity: 0.9;
+        }
+
+        /* Adjust the spacing and alignment */
+        #timer, #count {
+            font-weight: 600;
+            color: var(--imessage-blue);
+        }
+
+        .code-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;  /* Space between code and eye icon */
+        }
+
+        .code-wrapper {
+            position: relative;
+            display: inline-block;
+            min-width: 80px;  /* Ensure consistent width for the code */
+        }
+
+        .code-hidden, .code-actual {
+            transition: opacity 0.3s ease;
+        }
+
+        .code-actual {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            display: flex;
+            gap: 2px;
+            white-space: nowrap;
+        }
+
+        .code-hidden {
+            opacity: 1;
+            color: var(--imessage-blue);
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .toggle-code {
+            background: none;
+            border: none;
+            padding: 6px 8px;
+            cursor: pointer;
+            color: var(--imessage-blue);
+            opacity: 0.8;
+            transition: background-color 0.2s ease;
+            border-radius: 6px;
+        }
+
+        .toggle-code:hover {
+            background-color: rgba(0,122,255,0.1);
+        }
+
+        .digit {
+            display: inline-block;
+            color: var(--imessage-blue);
+        }
+
+        /* Show/hide animation */
+        .code-container.show .code-hidden {
+            opacity: 0;
+        }
+
+        .code-container.show .code-actual {
+            opacity: 1;
+        }
+
+        /* Add these styles */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        #theme-switch {
+            background: var(--card-bg);
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+
+        #theme-switch i {
+            color: var(--text-primary);
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        #theme-switch:hover {
+            transform: scale(1.05);
+        }
+
+        /* Animation for icon switch */
+        #theme-switch.dark i {
+            transform: rotate(360deg);
+        }
+
+        /* iOS-style blur effect */
+        @supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+            #theme-switch {
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                background: var(--card-bg);
+            }
+        }
+
+        /* Join request notification styling */
+        .join-request {
+            margin: 10px 0;
+            padding: 15px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Style for the join request text */
+        .join-request span {
+            color: var(--text-primary);
+            font-size: 15px;
+        }
+
+        /* Style for the join request buttons */
+        .join-request button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .join-request button.accept {
+            background: var(--imessage-blue);
+            color: white;
+        }
+
+        .join-request button.deny {
+            background: var(--system-gray);
+            color: white;
+            opacity: 0.9;
+        }
+
+        .join-request button:hover {
+            opacity: 0.8;
+        }
+
+        /* Join request message specific styling */
+        .join-request-message {
+            color: var(--text-primary) !important;
+            background: var(--message-received-bg);
+            padding: 8px 16px;
+            border-radius: 12px;
+            margin: 10px auto;
+            text-align: center;
+            font-size: 14px;
+            max-width: 80%;
+            box-shadow: 0 2px 5px var(--shadow-color);
+        }
+
+        /* Style for the buttons container */
+        .join-request-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="room-info">
-            <h2>Room Code: {{ display_code }}</h2>
-            <p>Time remaining: <span id="timer">{{ initial_time }}</span></p>
-            <p>Participants: <span id="count">{{ participant_count }}</span></p>
+            <h2>Room Code: 
+                <span class="code-container">
+                    <span class="code-wrapper">
+                        <span class="code-hidden">••••••</span>
+                        <div class="code-actual">
+                            {% for digit in display_code %}
+                            <span class="digit">{{ digit }}</span>
+                            {% endfor %}
+                        </div>
+                    </span>
+                    <button class="toggle-code" aria-label="Toggle code visibility">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </span>
+            </h2>
+            <div class="room-stats">
+                <p><i class="far fa-clock"></i> <span id="timer">{{ initial_time }}</span></p>
+                <p><i class="far fa-user"></i> <span id="count">{{ participant_count }}</span></p>
+            </div>
         </div>
         
         <div id="chat"></div>
         
-        <div class="input-area">
-            <textarea id="message-input" 
-                      placeholder="Type a message..." 
-                      rows="1"
-                      onkeypress="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
-            <button onclick="sendMessage()">Send</button>
-        </div>
+        
+    </div>
+    <div class="input-area">
+        <textarea id="message-input" 
+                  placeholder="Type a message..." 
+                  rows="1"
+                  onkeypress="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <div class="theme-toggle">
+        <button id="theme-switch" aria-label="Toggle dark mode">
+            <i class="fas fa-moon"></i>
+        </button>
     </div>
 
     <script>
@@ -530,7 +876,14 @@
             `;
             
             chat.appendChild(messageDiv);
-            chat.scrollTop = chat.scrollHeight;
+            
+            // Smooth scroll to bottom
+            requestAnimationFrame(() => {
+                chat.scrollTo({
+                    top: chat.scrollHeight,
+                    behavior: 'smooth'
+                });
+            });
         });
 
         // Simplified send message function
@@ -542,10 +895,14 @@
                     message: message
                 });
                 messageInput.value = '';
+                
+                // Reset height without animation
                 messageInput.style.height = '45px';
+                
                 const chat = document.getElementById('chat');
-                chat.style.marginBottom = '70px';
-                messageInput.blur(); // Hide keyboard after sending on mobile
+                chat.style.marginBottom = '80px';
+                
+                messageInput.focus();
             }
         }
 
@@ -676,22 +1033,29 @@
             }, 300);
         });
 
+        // Add scroll event listener
+        messageInput.addEventListener('scroll', function() {
+            if (!this.classList.contains('scrolling')) {
+                this.classList.add('scrolling');
+                
+                // Remove the class after scrolling stops
+                clearTimeout(this.scrollTimeout);
+                this.scrollTimeout = setTimeout(() => {
+                    this.classList.remove('scrolling');
+                }, 1000); // Hide scrollbar 1 second after scrolling stops
+            }
+        });
+
         // Update the input handler
         messageInput.addEventListener('input', function() {
-            // Reset height
+            const scrollTop = this.scrollTop;
             this.style.height = '45px';
-            
-            // Calculate new height based on content
-            const lineHeight = parseInt(getComputedStyle(this).lineHeight);
-            const maxLines = 7;
-            const maxHeight = lineHeight * maxLines;
-            const newHeight = Math.min(this.scrollHeight, maxHeight);
-            
+            const newHeight = Math.min(this.scrollHeight, 160);
             this.style.height = newHeight + 'px';
+            this.scrollTop = scrollTop;
             
-            // Adjust chat container
             const chat = document.getElementById('chat');
-            chat.style.marginBottom = (newHeight + 30) + 'px';
+            chat.style.marginBottom = (newHeight + 80) + 'px';
         });
 
         // Keep the Enter key handler
@@ -708,6 +1072,82 @@
                 navigator.vibrate(200);
             }
             // ... rest of the join_request handler
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeContainer = document.querySelector('.code-container');
+            const toggleButton = document.querySelector('.toggle-code');
+            let hideTimeout;  // Variable to store the timeout
+
+            function hideCode() {
+                codeContainer.classList.remove('show');
+                const icon = toggleButton.querySelector('i');
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+
+            function startHideTimer() {
+                // Clear any existing timeout
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                }
+                // Set new timeout for 10 seconds
+                hideTimeout = setTimeout(hideCode, 10000);
+            }
+            
+            toggleButton.addEventListener('click', function() {
+                codeContainer.classList.toggle('show');
+                const icon = this.querySelector('i');
+                
+                if (codeContainer.classList.contains('show')) {
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                    startHideTimer();  // Start the timer when showing code
+                } else {
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                    // Clear timeout if manually hidden
+                    if (hideTimeout) {
+                        clearTimeout(hideTimeout);
+                    }
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeSwitch = document.getElementById('theme-switch');
+            const icon = themeSwitch.querySelector('i');
+            
+            // Check for saved theme preference or default to system preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                updateIcon(savedTheme);
+            }
+
+            themeSwitch.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                // Save theme preference
+                localStorage.setItem('theme', newTheme);
+                document.documentElement.setAttribute('data-theme', newTheme);
+                
+                // Update icon
+                updateIcon(newTheme);
+            });
+
+            function updateIcon(theme) {
+                if (theme === 'dark') {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                    themeSwitch.classList.add('dark');
+                } else {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                    themeSwitch.classList.remove('dark');
+                }
+            }
         });
     </script>
 </body>
