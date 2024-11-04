@@ -4,72 +4,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Chat - Home</title>
+    <title>Secure Chat - Access Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --imessage-blue: #0B93F6;
+            --imessage-gray: #E9E9EB;
+            --system-gray: #8E8E93;
+            --background: #ffffff;
+            --border-color: #E5E5E5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
+            background: var(--background);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
-            background-color: #f5f5f5;
         }
+
         .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .create-form, .join-form {
-            margin-bottom: 30px;
-        }
-        input, button {
-            padding: 10px;
-            margin: 5px 0;
             width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            max-width: 400px;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
+
+        h2 {
+            color: #000;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .create-form, .join-form {
+            margin: 25px 0;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--imessage-blue);
+            box-shadow: 0 0 0 2px rgba(11, 147, 246, 0.2);
+        }
+
         button {
-            background-color: #4CAF50;
+            width: 100%;
+            padding: 12px;
+            background: var(--imessage-blue);
             color: white;
             border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: opacity 0.2s ease;
         }
+
         button:hover {
-            background-color: #45a049;
+            opacity: 0.9;
         }
+
         .help-text {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
+            color: var(--system-gray);
+            font-size: 14px;
+            text-align: center;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="create-form">
-            <h2>Create New Room</h2>
+            <h2>New Chat</h2>
             <form action="/" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="display_name" placeholder="Your Display Name" required>
-                <button type="submit">Create Room</button>
+                <input type="text" name="display_name" placeholder="Your Name" required>
+                <button type="submit">Create Chat</button>
             </form>
         </div>
 
         <div class="join-form">
-            <h2>Join Existing Room</h2>
+            <h2>Join Chat</h2>
             <form action="/join" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="display_name" placeholder="Your Display Name" required>
+                <input type="text" name="display_name" placeholder="Your Name" required>
                 <input type="text" name="room_code" 
-                       placeholder="Enter 6-digit Room Code" 
+                       placeholder="Enter 6-digit Code" 
                        pattern="[0-9]{6}"
                        maxlength="6"
-                       title="Please enter a 6-digit code"
+                       inputmode="numeric"
                        required>
-                <button type="submit">Join Room</button>
+                <button type="submit">Join Chat</button>
             </form>
-            <p class="help-text">Enter the 6-digit room code to join.</p>
+            <p class="help-text">Enter the 6-digit code to join an existing chat</p>
         </div>
     </div>
 </body>

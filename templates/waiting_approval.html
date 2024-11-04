@@ -6,47 +6,139 @@
     <title>Waiting for Approval</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
     <style>
+        :root {
+            --imessage-blue: #0B93F6;
+            --imessage-gray: #E9E9EB;
+            --system-gray: #8E8E93;
+            --background: #ffffff;
+            --border-color: #E5E5E5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 
+                         'SF Pro Icons', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            background: var(--background);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f5f5f5;
-        }
-        .waiting-container {
-            text-align: center;
             padding: 20px;
+        }
+
+        .waiting-container {
+            width: 100%;
+            max-width: 400px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
-        .spinner {
-            margin: 20px auto;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+
+        h2 {
+            color: #000;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .status-text {
+            color: var(--system-gray);
+            font-size: 15px;
+            margin: 20px 0;
+            font-weight: 400;
+        }
+
+        /* iMessage-style loading dots */
+        .typing-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 30px 0;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--imessage-blue);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            opacity: 0.3;
+            animation: pulse 1.4s infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 60%, 100% { transform: scale(1); opacity: 0.3; }
+            30% { transform: scale(1.2); opacity: 1; }
+        }
+
+        #timer {
+            color: var(--imessage-blue);
+            font-size: 18px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+
+        /* iMessage bubble animation */
+        .message-bubble {
+            background: var(--imessage-blue);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            margin: 20px auto;
+            max-width: 80%;
+            opacity: 0;
+            animation: bubble-appear 0.3s ease forwards;
+        }
+
+        @keyframes bubble-appear {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
     </style>
 </head>
 <body>
     <div class="waiting-container">
         <h2>Waiting for Approval</h2>
-        <p>Please wait while all members review your request...</p>
+        <p class="status-text">Your request has been sent to the chat members</p>
+        
+        <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+
+        <div class="message-bubble">
+            Requesting access to join the chat...
+        </div>
+        
         <div id="timer">60</div>
     </div>
 
     <script>
         const socket = io();
         let timeLeft = 60;
+        
+        // Emit join request when page loads
+        socket.emit('join_request', {
+            room: "{{ session['pending_approval'] }}",
+            user: "{{ session['display_name'] }}",
+            user_id: "{{ session['user_id'] }}"
+        });
         
         const timer = setInterval(() => {
             timeLeft--;
@@ -68,7 +160,7 @@
         socket.on('join_denied', function(data) {
             if (data.user_id === "{{ session['user_id'] }}") {
                 clearInterval(timer);
-                alert(data.reason || "Your join request was denied");
+                alert(data.reason || "Access denied");
                 window.location.href = '/';
             }
         });

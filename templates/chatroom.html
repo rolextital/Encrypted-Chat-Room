@@ -7,356 +7,515 @@
     <title>Secure Chat Room</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --imessage-blue: #0B93F6;
+            --imessage-gray: #E9E9EB;
+            --system-gray: #8E8E93;
+            --background: #ffffff;
+            --border-color: #E5E5E5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 
+                         'SF Pro Icons', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            background: var(--background);
+            color: #000;
+            line-height: 1.6;
         }
+
         .container {
-            background-color: white;
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
         .room-info {
-            background: #f8f9fa;
-            padding: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
             margin-bottom: 20px;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
+            text-align: center;
         }
+
+        .room-info h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--imessage-blue);
+        }
+
+        #timer {
+            font-weight: 600;
+            color: var(--system-gray);
+        }
+
+        #count {
+            font-weight: 600;
+            color: var(--imessage-blue);
+        }
+
         #chat {
-            height: 400px;
+            height: calc(100vh - 180px);
             overflow-y: auto;
-            border: 1px solid #dee2e6;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: white;
+            padding: 20px;
+            background: white;
+            margin-bottom: 60px;
         }
+
         .message {
-            margin: 5px 0;
-            padding: 8px;
-            border-radius: 5px;
-            background: #f8f9fa;
+            display: flex;
+            margin: 8px 0;
         }
+
+        .message.sent {
+            justify-content: flex-end;
+            padding-left: 30px;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+            padding-right: 30px;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 15px;
+        }
+
+        .message.sent .message-content {
+            background: var(--imessage-blue);
+            color: white;
+            border-bottom-right-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .message.received .message-content {
+            background: var(--imessage-gray);
+            color: black;
+            border-bottom-left-radius: 5px;
+            margin-left: 10px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            margin-top: 4px;
+            color: var(--system-gray);
+            padding: 0 12px;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            color: var(--system-gray);
+            margin-bottom: 2px;
+            padding-left: 12px;
+        }
+
         .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: var(--background);
+            border-top: 1px solid var(--border-color);
             display: flex;
             gap: 10px;
+            align-items: center;
         }
+
         input {
             flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
+            padding: 12px 20px;
             border: none;
-            border-radius: 4px;
+            border-radius: 20px;
+            background: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        input:focus {
+            outline: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        button {
+            background: transparent;
+            border: none;
+            color: var(--imessage-blue);
+            font-size: 16px;
+            font-weight: 600;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        @keyframes message-pop {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Typing indicator animation */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 12px;
+            background: var(--imessage-gray);
+            border-radius: 15px;
+            width: fit-content;
+            margin: 8px 0;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--system-gray);
+            border-radius: 50%;
+            animation: typing-bounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+
+        /* macOS-style notifications */
+        .join-request-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transform: translateX(120%);
+            opacity: 0;
+            z-index: 1000;
+        }
+
+        .join-request-notification.slide-in {
+            animation: slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .join-request-notification.slide-out {
+            animation: slide-out 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slide-in {
+            from { 
+                transform: translateX(120%);
+                opacity: 0;
+            }
+            to { 
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slide-out {
+            from { 
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to { 
+                transform: translateX(120%);
+                opacity: 0;
+            }
+        }
+
+        .notification-content {
+            margin-bottom: 12px;
+        }
+
+        .notification-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .notification-button {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
             cursor: pointer;
         }
-        .join-requests {
-            margin-top: 20px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 5px;
+
+        .notification-button.accept {
+            background: var(--imessage-blue);
+            color: white;
+        }
+
+        .notification-button.deny {
+            background: var(--imessage-gray);
+            color: black;
+        }
+
+        /* Add styles for approval status */
+        .approval-status {
+            font-size: 12px;
+            color: var(--system-gray);
+            margin-top: 4px;
+        }
+
+        /* Add this for system messages */
+        .system-message {
+            text-align: center;
+            margin: 10px 0;
+            padding: 5px;
+        }
+
+        .system-message span {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--system-gray);
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 13px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="room-info">
-            <h2>Chat Room</h2>
-            <p>Room Code: <span id="currentCode">{{ display_code }}</span></p>
-            <div id="member-count">Members Online: <span id="count">{{ participant_count }}</span></div>
-            <div id="code-timer">Next code update in: <span id="timer">5:00</span></div>
+            <h2>Room Code: {{ display_code }}</h2>
+            <p>Time remaining: <span id="timer">{{ initial_time }}</span></p>
+            <p>Participants: <span id="count">{{ participant_count }}</span></p>
         </div>
-
-        <div id="join-requests-container"></div>
+        
         <div id="chat"></div>
         
         <div class="input-area">
-            <input id="message" 
-                   type="text" 
-                   placeholder="Type your message..." 
-                   maxlength="{{ MAX_MESSAGE_LENGTH }}"
-                   onkeypress="if(event.key === 'Enter') { event.preventDefault(); sendMessage(); }">
+            <input type="text" id="message-input" placeholder="Type a message..." 
+                   onkeypress="if(event.key === 'Enter') sendMessage()">
             <button onclick="sendMessage()">Send</button>
-            <button onclick="leaveChat()">Leave</button>
         </div>
     </div>
 
     <script>
-        const socket = io({
-            query: {
-                room: "{{ room_code }}",
-                csrf_token: "{{ csrf_token() }}"
-            },
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            timeout: 20000
+        const socket = io();
+        
+        // Join the room
+        socket.emit('join', {
+            room: "{{ room_code }}",
+            display_name: "{{ session['display_name'] }}"
         });
 
-        // Add connection error handling
-        socket.on('connect_error', (error) => {
-            console.log('Connection Error:', error);
-            // Attempt to reconnect after 5 seconds
-            setTimeout(() => {
-                socket.connect();
-            }, 5000);
+        // Handle successful join
+        socket.on('join_success', function(data) {
+            console.log('Successfully joined room:', data);
+            updateParticipantCount(data.count);
         });
 
-        socket.on('disconnect', (reason) => {
-            console.log('Disconnected:', reason);
-            if (reason === 'io server disconnect') {
-                // Reconnect if server disconnected
-                socket.connect();
+        // Update participant count - broadcast to all
+        socket.on('update_participants', function(data) {
+            console.log('Participant update received:', data);
+            updateParticipantCount(data.count);
+        });
+
+        function updateParticipantCount(count) {
+            console.log('Updating participant count to:', count);
+            const countElement = document.getElementById('count');
+            if (countElement) {
+                countElement.textContent = count;
             }
+        }
+
+        // Handle disconnection
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            socket.emit('leave_room', {
+                room: "{{ room_code }}",
+                display_name: "{{ session['display_name'] }}"
+            });
+            // Give some time for the leave_room event to be sent
+            return null;
         });
 
-        // Add ping/pong to keep connection alive
-        setInterval(() => {
-            socket.emit('ping');
-        }, 25000);
+        // Handle room errors
+        socket.on('room_error', function(data) {
+            alert(data.message || "Error with the room");
+            window.location.href = '/';
+        });
 
-        socket.on('connect', function() {
-            console.log('Connected with encryption key:', encryptionKey);
-            socket.emit('join', {
+        // Keep alive ping to maintain connection
+        setInterval(() => {
+            socket.emit('ping_room', {
                 room: "{{ room_code }}"
             });
-            socket.emit('request_timer_sync', { room: "{{ room_code }}" });
+        }, 30000);  // Every 30 seconds
+
+        // Handle room status check
+        socket.on('room_status', function(data) {
+            if (!data.exists) {
+                alert("This room no longer exists.");
+                window.location.href = '/';
+            }
         });
 
-        // Encryption setup
-        const roomKey = "{{ room_code }}";
-        const encryptionKey = "{{ encryption_key }}";
-        
-        function encryptMessage(message) {
-            try {
-                const salt = CryptoJS.lib.WordArray.random(128/8);
-                const key = CryptoJS.PBKDF2(roomKey + encryptionKey, salt, {
-                    keySize: 256/32,
-                    iterations: 1000
-                });
-                const encrypted = CryptoJS.AES.encrypt(message, key.toString());
-                return JSON.stringify({
-                    salt: salt.toString(CryptoJS.enc.Hex),
-                    content: encrypted.toString()
-                });
-            } catch (e) {
-                console.error('Encryption error:', e);
-                console.log('roomKey:', roomKey);
-                console.log('encryptionKey:', encryptionKey);
-                return null;
-            }
-        }
-
-        function decryptMessage(encryptedData) {
-            try {
-                const parsedData = JSON.parse(encryptedData);
-                const salt = CryptoJS.enc.Hex.parse(parsedData.salt);
-                
-                const key = CryptoJS.PBKDF2(roomKey + encryptionKey, salt, {
-                    keySize: 256/32,
-                    iterations: 1000
-                });
-                const decrypted = CryptoJS.AES.decrypt(parsedData.content, key.toString());
-                const result = decrypted.toString(CryptoJS.enc.Utf8);
-                
-                if (!result) {
-                    throw new Error('Decryption resulted in empty string');
-                }
-                
-                return result;
-            } catch (e) {
-                console.error('Decryption error:', e);
-                console.log('Encrypted data:', encryptedData);
-                console.log('roomKey:', roomKey);
-                console.log('encryptionKey:', encryptionKey);
-                return 'Message cannot be decrypted';
-            }
-        }
-
-        // Message sending function
-        function sendMessage() {
-            const messageInput = document.getElementById('message');
-            const message = messageInput.value.trim();
-            
-            if (message) {
-                console.log('Sending message:', message); // Debug log
-                const encryptedMessage = encryptMessage(message);
-                
-                if (encryptedMessage) {
-                    console.log('Encrypted message:', encryptedMessage); // Debug log
-                    socket.emit('message', {
-                        message: encryptedMessage,
-                        room: "{{ room_code }}"
-                    });
-                    messageInput.value = '';
-                } else {
-                    console.error('Failed to encrypt message');
-                }
-            }
-        }
-
-        // Message receiving
+        // Simplified message handler without reply functionality
         socket.on('message', function(data) {
-            console.log('Received message:', data); // Debug log
             const chat = document.getElementById('chat');
             const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
+            const isCurrentUser = data.sender === "{{ session['display_name'] }}";
             
-            try {
-                const decryptedContent = decryptMessage(data.content);
-                console.log('Decrypted content:', decryptedContent); // Debug log
-                if (decryptedContent && decryptedContent !== 'Message cannot be decrypted') {
-                    messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): ${decryptedContent}`;
-                } else {
-                    messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): [Message cannot be decrypted]`;
-                }
-            } catch (e) {
-                console.error('Decryption failed:', e);
-                messageDiv.innerHTML = `<strong>${data.sender}</strong> (${data.timestamp}): [Encryption Error]`;
-            }
+            messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+            
+            messageDiv.innerHTML = `
+                ${!isCurrentUser ? `<div class="message-sender">${data.sender}</div>` : ''}
+                <div class="message-content">${data.content}</div>
+                <div class="message-time">${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+            `;
             
             chat.appendChild(messageDiv);
             chat.scrollTop = chat.scrollHeight;
         });
 
-        // Timer synchronization
-        let timeLeft = {{ initial_time }};
-        const timerElement = document.getElementById('timer');
-        let timerInterval;
-
-        function startTimer(initialTime) {
-            // Clear existing timer if any
-            if (timerInterval) {
-                clearInterval(timerInterval);
+        // Simplified send message function
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                socket.emit('message', {
+                    room: "{{ room_code }}",
+                    message: message
+                });
+                input.value = '';
             }
-            
-            timeLeft = initialTime;
-            updateTimer(); // Update immediately
-            
-            timerInterval = setInterval(() => {
-                timeLeft = Math.max(0, timeLeft - 1);
-                updateTimer();
-                
-                // Request sync when timer gets close to zero
-                if (timeLeft <= 1) {
-                    socket.emit('request_timer_sync', { room: "{{ room_code }}" });
-                }
-            }, 1000);
         }
 
+        // Timer functionality
+        let timeRemaining = {{ initial_time }};
+        
         function updateTimer() {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timer').textContent = formattedTime;
         }
 
-        // Start timer on initial load
-        startTimer({{ initial_time }});
+        const timerInterval = setInterval(() => {
+            timeRemaining--;
+            if (timeRemaining < 0) {
+                timeRemaining = 300; // Reset to 5 minutes
+            }
+            updateTimer();
+        }, 1000);
 
-        // Handle timer sync response
-        socket.on('timer_sync', function(data) {
-            startTimer(data.time_remaining);
-        });
-
-        // Update code_update handler
+        // Handle code updates from server
         socket.on('code_update', function(data) {
-            document.getElementById('currentCode').textContent = data.new_code;
-            startTimer(300); // Reset timer to 5 minutes
+            document.querySelector('.room-info h2').textContent = `Room Code: ${data.new_code}`;
         });
 
-        // Request timer sync periodically
-        setInterval(() => {
-            socket.emit('request_timer_sync', { room: "{{ room_code }}" });
-        }, 10000); // Sync every 10 seconds
+        // Add this handler for join announcements
+        socket.on('member_joined', function(data) {
+            const chat = document.getElementById('chat');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.innerHTML = `<span>${data.display_name} joined the chat</span>`;
+            chat.appendChild(messageDiv);
+            chat.scrollTop = chat.scrollHeight;
+        });
 
-        // Join request handling
+        // Add this handler for leave announcements
+        socket.on('member_left', function(data) {
+            const chat = document.getElementById('chat');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.innerHTML = `<span>${data.display_name} left the chat</span>`;
+            chat.appendChild(messageDiv);
+            chat.scrollTop = chat.scrollHeight;
+        });
+
+        // Restore notification handling
         socket.on('join_request', function(data) {
-            if (!document.querySelector(`[data-user-id="${data.user_id}"]`)) {
-                const container = document.getElementById('join-requests-container');
-                const requestDiv = document.createElement('div');
-                requestDiv.className = 'join-request';
-                requestDiv.setAttribute('data-user-id', data.user_id);
-                requestDiv.innerHTML = `
-                    <p>${data.user} wants to join the room</p>
-                    <div class="approval-status">Waiting for all members to approve (60s)</div>
-                    <button onclick="handleJoinRequest('${data.user_id}', true)">Accept</button>
-                    <button onclick="handleJoinRequest('${data.user_id}', false)">Deny</button>
+            console.log('Join request received:', data);
+            const notificationId = `notification-${data.user_id}`;
+            
+            if (!document.getElementById(notificationId)) {
+                const notification = document.createElement('div');
+                notification.id = notificationId;
+                notification.className = 'join-request-notification';
+                notification.innerHTML = `
+                    <div class="notification-content">
+                        <strong>${data.user}</strong> wants to join the chat
+                        <div class="approval-status" id="status-${data.user_id}">
+                            Waiting for all members to approve...
+                        </div>
+                    </div>
+                    <div class="notification-buttons">
+                        <button onclick="handleJoinRequest('${data.user_id}', true)" 
+                                class="notification-button accept">Accept</button>
+                        <button onclick="handleJoinRequest('${data.user_id}', false)" 
+                                class="notification-button deny">Decline</button>
+                    </div>
                 `;
-                container.appendChild(requestDiv);
-                
-                // Add timer for this request
-                const timerDiv = requestDiv.querySelector('.approval-status');
-                let timeLeft = 60;
-                const timer = setInterval(() => {
-                    timeLeft--;
-                    if (timeLeft <= 0) {
-                        clearInterval(timer);
-                        requestDiv.remove();
-                    } else {
-                        timerDiv.textContent = `Waiting for all members to approve (${timeLeft}s)`;
+                document.body.appendChild(notification);
+
+                // Add closing animation class
+                notification.classList.add('slide-in');
+
+                // Auto-remove after 60 seconds
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        removeNotification(notification);
                     }
-                }, 1000);
+                }, 60000);
             }
         });
 
-        socket.on('partial_approval', function(data) {
-            const requestDiv = document.querySelector(`[data-user-id="${data.user_id}"]`);
-            if (requestDiv) {
-                const statusDiv = requestDiv.querySelector('.approval-status');
-                statusDiv.textContent = `Approvals: ${data.approvals}/${data.required}`;
-            }
-        });
+        // Function to remove notification with animation
+        function removeNotification(notification) {
+            notification.classList.add('slide-out');
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 500); // Match this with the animation duration
+        }
 
         function handleJoinRequest(userId, approved) {
-            console.log('Handling join request:', userId, approved);
-            const eventName = approved ? 'approve_join' : 'deny_join';
-            socket.emit(eventName, {
+            const notification = document.getElementById(`notification-${userId}`);
+            
+            if (notification) {
+                // Add a brief status message before removing
+                const statusElement = notification.querySelector('.approval-status');
+                if (statusElement) {
+                    statusElement.textContent = approved ? 'You approved the request' : 'You denied the request';
+                }
+                
+                // Remove notification after a brief delay
+                setTimeout(() => {
+                    removeNotification(notification);
+                }, 1000);
+            }
+            
+            socket.emit(approved ? 'approve_join' : 'deny_join', {
                 user_id: userId,
                 room: "{{ room_code }}"
             });
-            // Remove request UI for all participants
-            const requestDiv = document.querySelector(`[data-user-id="${userId}"]`);
-            if (requestDiv) {
-                requestDiv.remove();
-            }
-        }
-
-        // When someone is approved, remove their request UI for all participants
-        socket.on('join_approved', function(data) {
-            const requestDiv = document.querySelector(`[data-user-id="${data.user_id}"]`);
-            if (requestDiv) {
-                requestDiv.remove();
-            }
-            // Sync timer if time is provided
-            if (data.current_time) {
-                timeLeft = 300 - ((Math.floor(Date.now() / 1000) - data.current_time) % 300);
-            }
-        });
-
-        // Participant count handling
-        socket.on('update_participants', function(data) {
-            document.getElementById('count').textContent = data.count;
-        });
-
-        // Handle disconnection
-        window.addEventListener('beforeunload', function() {
-            socket.disconnect();
-        });
-
-        function leaveChat() {
-            socket.disconnect();
-            window.location.href = '/';
         }
     </script>
 </body>

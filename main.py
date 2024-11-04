@@ -302,13 +302,58 @@ def handle_code_update(data):
 
 @socketio.on('join')
 def on_join(data):
-    room = data['room']
+    room = data.get('room')
+    display_name = data.get('display_name')
+    
+    if room not in rooms:
+        emit('room_error', {'message': 'Room does not exist'})
+        return
+        
+    join_room(room)
     if room in rooms:
-        join_room(room)
-        # Emit updated count after joining
+        if display_name not in rooms[room]['participants']:
+            rooms[room]['participants'].append(display_name)
+            # Emit join announcement to all room members
+            socketio.emit('member_joined', {
+                'display_name': display_name
+            }, room=room)
+        
+        participant_count = len(rooms[room]['participants'])
+        
+        # Emit to the joining user
+        emit('join_success', {
+            'count': participant_count
+        })
+        
+        # Broadcast to all users in the room
         socketio.emit('update_participants', {
-            'count': len(rooms[room]['participants'])
+            'count': participant_count
         }, room=room)
+
+@socketio.on('leave_room')
+def on_leave(data):
+    room = data.get('room')
+    display_name = data.get('display_name')
+    
+    if room in rooms and display_name in rooms[room]['participants']:
+        rooms[room]['participants'].remove(display_name)
+        leave_room(room)
+        
+        # Emit leave announcement
+        socketio.emit('member_left', {
+            'display_name': display_name
+        }, room=room)
+        
+        participant_count = len(rooms[room]['participants'])
+        
+        # Broadcast to remaining users
+        socketio.emit('update_participants', {
+            'count': participant_count
+        }, room=room)
+        
+        # Clean up empty rooms
+        if participant_count == 0:
+            del rooms[room]
 
 @socketio.on('approve_join')
 def on_approve(data):
