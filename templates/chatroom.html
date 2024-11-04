@@ -756,6 +756,140 @@
             gap: 10px;
             margin-top: 8px;
         }
+
+        /* Optimize chat container for mobile */
+        #chat {
+            -webkit-overflow-scrolling: touch;  /* Enable smooth scrolling on iOS */
+            overscroll-behavior: contain;       /* Prevent pull-to-refresh */
+            height: calc(100vh - 180px);        /* Adjust height for mobile */
+            padding-bottom: 60px;               /* Add padding for input area */
+            will-change: transform;             /* Optimize for scrolling performance */
+        }
+
+        /* Prevent body scroll when modal is open */
+        body {
+            overscroll-behavior-y: contain;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* iOS-specific optimizations */
+        @supports (-webkit-touch-callout: none) {
+            .input-area {
+                /* Account for iOS bottom safe area */
+                padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+
+            #chat {
+                /* Enable momentum scrolling */
+                -webkit-overflow-scrolling: touch;
+                /* Prevent overscroll */
+                overscroll-behavior: contain;
+            }
+        }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 768px) {
+            #chat {
+                height: calc(100vh - 180px);
+                padding: 10px;
+                padding-bottom: 60px;
+                margin-bottom: 0;
+            }
+
+            .message-content {
+                max-width: 85%;
+                font-size: 14px;
+            }
+
+            .input-area {
+                padding: 10px;
+                background: var(--background);
+                position: fixed;
+                bottom: env(safe-area-inset-bottom, 0);
+                left: 0;
+                right: 0;
+            }
+
+            textarea {
+                padding: 8px 15px;
+                font-size: 16px;  /* Prevent zoom on iOS */
+            }
+        }
+
+        /* Optimize scrollbar for touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            #chat::-webkit-scrollbar {
+                width: 0;
+                height: 0;
+            }
+        }
+
+        /* Chat container adjustments */
+        #chat {
+            height: calc(100vh - 180px);
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--chat-bg);
+            margin-bottom: 70px;  /* Add margin to prevent text cutoff */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            will-change: transform;
+        }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 768px) {
+            #chat {
+                height: calc(100vh - 120px);  /* Adjusted height */
+                padding: 15px;
+                padding-bottom: 100px;        /* Increased bottom padding */
+                margin-bottom: 60px;          /* Space for input area */
+            }
+
+            .input-area {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 12px;
+                background: var(--background);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-top: 0.5px solid var(--border-color);
+                z-index: 1000;
+            }
+
+            /* Container adjustment */
+            .container {
+                padding: 10px;
+                padding-bottom: 70px;  /* Add padding to container */
+                max-width: 100%;
+                height: 100vh;
+                position: relative;
+            }
+        }
+
+        /* iOS-specific adjustments */
+        @supports (-webkit-touch-callout: none) {
+            .input-area {
+                padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+
+            #chat {
+                padding-bottom: calc(100px + env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Ensure messages don't get cut off at the bottom */
+        .message {
+            margin: 6px 0;
+            max-width: 75%;
+        }
+
+        .message:last-child {
+            margin-bottom: 20px;  /* Add extra margin to last message */
+        }
     </style>
 </head>
 <body>
