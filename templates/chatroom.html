@@ -3,7 +3,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Secure Chat Room</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -29,6 +32,10 @@
             background: var(--background);
             color: #000;
             line-height: 1.6;
+            overscroll-behavior-y: contain;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
 
         .container {
@@ -65,56 +72,63 @@
             overflow-y: auto;
             padding: 20px;
             background: white;
-            margin-bottom: 60px;
+            margin-bottom: 70px;
         }
 
         .message {
-            display: flex;
             margin: 8px 0;
+            display: flex;
+            flex-direction: column;
+            max-width: 70%;
         }
 
         .message.sent {
-            justify-content: flex-end;
-            padding-left: 30px;
+            margin-left: auto;
+            align-items: flex-end;
         }
 
         .message.received {
-            justify-content: flex-start;
-            padding-right: 30px;
+            margin-right: auto;
+            align-items: flex-start;
         }
 
         .message-content {
-            max-width: 70%;
             padding: 8px 12px;
-            border-radius: 15px;
+            border-radius: 18px;
+            margin: 2px 0;
+            word-wrap: break-word;
+            max-width: 100%;
         }
 
         .message.sent .message-content {
             background: var(--imessage-blue);
             color: white;
             border-bottom-right-radius: 5px;
-            margin-right: 10px;
         }
 
         .message.received .message-content {
             background: var(--imessage-gray);
             color: black;
             border-bottom-left-radius: 5px;
-            margin-left: 10px;
         }
 
         .message-time {
             font-size: 11px;
-            margin-top: 4px;
             color: var(--system-gray);
-            padding: 0 12px;
+            margin-top: 2px;
+            padding: 0 4px;
+            align-self: flex-end;
+        }
+
+        .message.received .message-time {
+            align-self: flex-start;
         }
 
         .message-sender {
             font-size: 12px;
             color: var(--system-gray);
             margin-bottom: 2px;
-            padding-left: 12px;
+            padding: 0 4px;
         }
 
         .input-area {
@@ -127,10 +141,10 @@
             border-top: 1px solid var(--border-color);
             display: flex;
             gap: 10px;
-            align-items: center;
+            align-items: flex-end;
         }
 
-        input {
+        textarea {
             flex-grow: 1;
             padding: 12px 20px;
             border: none;
@@ -139,9 +153,15 @@
             font-size: 16px;
             transition: all 0.3s ease;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            resize: none;
+            min-height: 45px;
+            max-height: 160px;
+            line-height: 1.4;
+            font-family: inherit;
+            overflow-y: auto;
         }
 
-        input:focus {
+        textarea:focus {
             outline: none;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
@@ -202,46 +222,71 @@
         /* macOS-style notifications */
         .join-request-notification {
             position: fixed;
-            top: 20px;
-            right: 20px;
             width: 300px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 16px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            transform: translateX(120%);
-            opacity: 0;
             z-index: 1000;
         }
 
-        .join-request-notification.slide-in {
-            animation: slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        .join-request-notification.slide-out {
-            animation: slide-out 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        @keyframes slide-in {
-            from { 
+        /* Desktop styles */
+        @media (min-width: 769px) {
+            .join-request-notification {
+                top: 20px;
+                right: 20px;
                 transform: translateX(120%);
-                opacity: 0;
             }
-            to { 
+
+            .join-request-notification.slide-in {
                 transform: translateX(0);
-                opacity: 1;
+            }
+
+            .join-request-notification.slide-out {
+                transform: translateX(120%);
             }
         }
 
-        @keyframes slide-out {
-            from { 
-                transform: translateX(0);
-                opacity: 1;
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .join-request-notification {
+                top: 80px; /* Increased to avoid room info overlap */
+                left: 50%;
+                width: 90%;
+                max-width: 350px;
+                transform: translate(-50%, -150%);
             }
-            to { 
-                transform: translateX(120%);
-                opacity: 0;
+
+            .join-request-notification.slide-in {
+                transform: translate(-50%, 0);
+                animation: mobile-slide-in 0.3s ease forwards;
+            }
+
+            .join-request-notification.slide-out {
+                animation: mobile-slide-out 0.3s ease forwards;
+            }
+
+            @keyframes mobile-slide-in {
+                from { 
+                    transform: translate(-50%, -150%);
+                    opacity: 0;
+                }
+                to { 
+                    transform: translate(-50%, 0);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes mobile-slide-out {
+                from { 
+                    transform: translate(-50%, 0);
+                    opacity: 1;
+                }
+                to { 
+                    transform: translate(-50%, -150%);
+                    opacity: 0;
+                }
             }
         }
 
@@ -294,6 +339,100 @@
             border-radius: 10px;
             font-size: 13px;
         }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+                max-width: 100%;
+            }
+
+            #chat {
+                height: calc(100vh - 160px);
+                padding: 10px;
+            }
+
+            .message-content {
+                max-width: 85%;
+                font-size: 14px;
+            }
+
+            .input-area {
+                padding: 10px;
+                background: var(--background);
+                position: fixed;
+                bottom: env(safe-area-inset-bottom, 0);
+                left: 0;
+                right: 0;
+            }
+
+            textarea {
+                padding: 8px 15px;
+                font-size: 16px;
+            }
+
+            .join-request-notification {
+                width: 90%;
+                left: 50%;
+                transform: translateX(-50%);
+                right: auto;
+            }
+
+            .message-wrapper {
+                max-width: 85%;
+            }
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            .input-area {
+                padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+
+            #chat {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+        }
+
+        /* Prevent pull-to-refresh */
+        body {
+            overscroll-behavior-y: contain;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Style the scrollbar for the textarea */
+        textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: var(--system-gray);
+            border-radius: 3px;
+        }
+
+        /* Update chat container margin for expanded textarea */
+        #chat {
+            height: calc(100vh - 180px);
+            margin-bottom: 70px;
+            overflow-y: auto;
+            padding: 20px;
+            background: white;
+            transition: margin-bottom 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            textarea {
+                font-size: 16px;
+                line-height: 1.4;
+                min-height: 45px;
+                max-height: 160px; /* Keep same height for mobile */
+            }
+        }
     </style>
 </head>
 <body>
@@ -307,8 +446,10 @@
         <div id="chat"></div>
         
         <div class="input-area">
-            <input type="text" id="message-input" placeholder="Type a message..." 
-                   onkeypress="if(event.key === 'Enter') sendMessage()">
+            <textarea id="message-input" 
+                      placeholder="Type a message..." 
+                      rows="1"
+                      onkeypress="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
@@ -394,15 +535,17 @@
 
         // Simplified send message function
         function sendMessage() {
-            const input = document.getElementById('message-input');
-            const message = input.value.trim();
-            
+            const message = messageInput.value.trim();
             if (message) {
                 socket.emit('message', {
                     room: "{{ room_code }}",
                     message: message
                 });
-                input.value = '';
+                messageInput.value = '';
+                messageInput.style.height = '45px';
+                const chat = document.getElementById('chat');
+                chat.style.marginBottom = '70px';
+                messageInput.blur(); // Hide keyboard after sending on mobile
             }
         }
 
@@ -517,6 +660,55 @@
                 room: "{{ room_code }}"
             });
         }
+
+        // Add touch event handling for mobile
+        document.addEventListener('touchmove', function(e) {
+            if (e.target.id !== 'chat') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Improve mobile keyboard handling
+        const messageInput = document.getElementById('message-input');
+        messageInput.addEventListener('focus', () => {
+            setTimeout(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            }, 300);
+        });
+
+        // Update the input handler
+        messageInput.addEventListener('input', function() {
+            // Reset height
+            this.style.height = '45px';
+            
+            // Calculate new height based on content
+            const lineHeight = parseInt(getComputedStyle(this).lineHeight);
+            const maxLines = 7;
+            const maxHeight = lineHeight * maxLines;
+            const newHeight = Math.min(this.scrollHeight, maxHeight);
+            
+            this.style.height = newHeight + 'px';
+            
+            // Adjust chat container
+            const chat = document.getElementById('chat');
+            chat.style.marginBottom = (newHeight + 30) + 'px';
+        });
+
+        // Keep the Enter key handler
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Add vibration feedback for notifications (if supported)
+        socket.on('join_request', function(data) {
+            if (navigator.vibrate) {
+                navigator.vibrate(200);
+            }
+            // ... rest of the join_request handler
+        });
     </script>
 </body>
 </html>

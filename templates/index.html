@@ -90,6 +90,30 @@
             text-align: center;
             margin-top: 10px;
         }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+                margin: 20px auto;
+            }
+
+            input, button {
+                height: 44px; /* Minimum touch target size */
+            }
+
+            /* Add space between forms on mobile */
+            .create-form, .join-form {
+                margin: 30px 0;
+            }
+        }
+
+        /* Prevent zoom on input focus for iOS */
+        @supports (-webkit-touch-callout: none) {
+            input {
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
