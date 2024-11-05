@@ -195,6 +195,8 @@
             z-index: 1000;
             border-top: 0.5px solid var(--border-color);
             transition: transform 0.3s ease;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
 
         textarea {
@@ -1261,42 +1263,56 @@
         document.addEventListener('DOMContentLoaded', function() {
             const messageInput = document.getElementById('message-input');
             const inputArea = document.querySelector('.input-area');
+            const chat = document.getElementById('chat');
             
+            // Function to detect Safari
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
             // Function to detect mobile device
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
             if (isMobile) {
                 // Handle input focus (keyboard appears)
                 messageInput.addEventListener('focus', function() {
-                    // Small delay to ensure keyboard is fully shown
                     setTimeout(() => {
-                        // Get the visual viewport height
                         const viewportHeight = window.visualViewport.height;
-                        // Get the distance from the bottom of the viewport
                         const bottomOffset = window.innerHeight - viewportHeight;
                         
-                        // Adjust the input area position
-                        inputArea.style.position = 'fixed';
-                        inputArea.style.bottom = `${bottomOffset}px`;
+                        // Special handling for Safari
+                        if (isSafari) {
+                            // Adjust the bottom offset for Safari
+                            const safariFix = bottomOffset - (bottomOffset * 0.1); // Reduce the offset by 10%
+                            inputArea.style.bottom = `${safariFix}px`;
+                            
+                            // Adjust chat container
+                            chat.style.height = `${viewportHeight - inputArea.offsetHeight}px`;
+                        } else {
+                            inputArea.style.bottom = `${bottomOffset}px`;
+                        }
                         
                         // Scroll chat to bottom
-                        const chat = document.getElementById('chat');
                         chat.scrollTop = chat.scrollHeight;
                     }, 100);
                 });
 
                 // Handle input blur (keyboard disappears)
                 messageInput.addEventListener('blur', function() {
-                    // Reset the input area position
-                    inputArea.style.position = 'fixed';
                     inputArea.style.bottom = '0';
+                    chat.style.height = ''; // Reset chat height
                 });
 
-                // Handle viewport changes (like keyboard appearing/disappearing)
+                // Handle viewport changes
                 window.visualViewport.addEventListener('resize', function() {
                     if (document.activeElement === messageInput) {
-                        const bottomOffset = window.innerHeight - window.visualViewport.height;
-                        inputArea.style.bottom = `${bottomOffset}px`;
+                        const viewportHeight = window.visualViewport.height;
+                        const bottomOffset = window.innerHeight - viewportHeight;
+                        
+                        if (isSafari) {
+                            const safariFix = bottomOffset - (bottomOffset * 0.1);
+                            inputArea.style.bottom = `${safariFix}px`;
+                            chat.style.height = `${viewportHeight - inputArea.offsetHeight}px`;
+                        } else {
+                            inputArea.style.bottom = `${bottomOffset}px`;
+                        }
                     }
                 });
             }
